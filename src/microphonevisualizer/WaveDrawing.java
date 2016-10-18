@@ -6,21 +6,20 @@
 package microphonevisualizer;
 
 import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import javax.swing.JPanel;
 import javax.swing.BorderFactory;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -31,6 +30,7 @@ import javax.sound.sampled.LineUnavailableException;
 
 import javax.sound.sampled.TargetDataLine;
 import javax.swing.Timer;
+
 /**
  *
  * @author maryan
@@ -73,7 +73,6 @@ public class WaveDrawing extends JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
- 
 
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
@@ -81,47 +80,45 @@ public class WaveDrawing extends JFrame {
             }
         });
     }
-    
-    
+
     private static void createAndShowGUI() {
-        System.out.println("Created GUI on EDT? "+
-                SwingUtilities.isEventDispatchThread());
-        JFrame f = new JFrame("Swing Paint Demo");
+        JFrame f = new JFrame("Swing Paint");
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        f.setSize(250,250);
+        f.setSize(250, 250);
         MyPanel obj = new MyPanel();
         f.add(obj);
-        
+
         f.pack();
         f.setVisible(true);
 
-
     }
-
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
 }
 
-
 class MyPanel extends JPanel implements ActionListener {
+
     private short d;
-    private int i =0 ;
+
     public TargetDataLine line;
     Timer timer;
-
+    List <Points> points;
+    public double scaler = Short.MAX_VALUE / (double) 150;
+    
     public MyPanel() {
         setBorder(BorderFactory.createLineBorder(Color.black));
-            timer = new Timer(1, this);
-//    timer.setInitialDelay(2290);
-    timer.start();
+        timer = new Timer(0, this);
+        points = new ArrayList<>();
+        
+        timer.start();
         try {
-          
+
             AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, true);
             line = AudioSystem.getTargetDataLine(format);
-            
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format); 
+
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
             if (!AudioSystem.isLineSupported(info)) {
 
                 System.out.println("error");
@@ -133,54 +130,72 @@ class MyPanel extends JPanel implements ActionListener {
             } catch (LineUnavailableException ex) {
                 System.out.println("error");
             }
-            
 
             line.start();
-            
-            
+
         } catch (LineUnavailableException ex) {
             System.out.println("error");
         }
     }
-    
+
     public void readData() {
-               
-                int numBytesRead = 16;
-                byte[] data = new byte[numBytesRead];
-                    
-            
-                line.read(data, 0, numBytesRead);
-                
-                i++;
-                
-                ByteBuffer bb = ByteBuffer.wrap(data);
-                d = bb.getShort();
-                
-                if (i == 200) {
-                    i = 0;
-                }
-              System.out.println(d);
-   
+
+        int numBytesRead = 16;
+        byte[] data = new byte[numBytesRead];
+        line.read(data, 0, numBytesRead);
+
+
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        d = bb.getShort();
+
     }
 
     public Dimension getPreferredSize() {
-        return new Dimension(500,500);
+        return new Dimension(800, 400);
     }
-    
 
-    
     public void paint(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g;
-            
-            g2.drawLine(14, this.i, this.d, 77);  
-   
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+        for(Points p: points) {
+            g2.drawLine(p.i1, p.i2, p.j1, p.j2);
+        }
+
     }
 
     @Override
     public void actionPerformed(ActionEvent ae) {
-       readData();
-        
-        repaint();  
+        readData();
+        Points p;
+        for(Points p1: points) {
+            p1.i1 = p1.i1 - 1;
+            p1.j1 = p1.j1 - 1;
+        }
+        if ( points.isEmpty() ) {
+            p = new Points(800, 200, 800, 200 - (int) (d / scaler));
+            points.add(p);
+        }  else {
+            int i2 = points.get(points.size() - 1).j2;
+            p = new Points(800, i2, 800, 200 - (int) (d / scaler));
+            points.add(p);
+
+        }
+         if (points.size() > 801) {
+            points.remove(0);     
+         }
+        repaint();
+    }
+}
+class Points {
+    public int i1;
+    public int i2;
+    public int j1;
+    public int j2;
+    
+    Points(int i1, int i2, int j1, int j2) {
+        this.i1 = i1;
+        this.i2 = i2;
+        this.j1 = j1;
+        this.j2 = j2;
     }
 }
