@@ -36,7 +36,7 @@ import javax.swing.Timer;
  * @author maryan
  */
 public class WaveDrawing extends JFrame {
-
+    
     /**
      * Creates new form WaveDrawing
      */
@@ -84,7 +84,6 @@ public class WaveDrawing extends JFrame {
     private static void createAndShowGUI() {
         JFrame f = new JFrame("Swing Paint");
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        f.setSize(250, 250);
         MyPanel obj = new MyPanel();
         f.add(obj);
 
@@ -99,10 +98,13 @@ public class WaveDrawing extends JFrame {
 }
 
 class MyPanel extends JPanel implements ActionListener {
-
+    public static final double threshold = 3.0;
+    public static int count = 0;
     private short d;
-
+    public double rms;
     public TargetDataLine line;
+    public int sumOfSquares;
+    
     Timer timer;
     List <Points> points;
     public double scaler = Short.MAX_VALUE / (double) 150;
@@ -137,17 +139,17 @@ class MyPanel extends JPanel implements ActionListener {
             System.out.println("error");
         }
     }
+    
+    
 
     public void readData() {
 
         int numBytesRead = 16;
         byte[] data = new byte[numBytesRead];
         line.read(data, 0, numBytesRead);
-
-
         ByteBuffer bb = ByteBuffer.wrap(data);
         d = bb.getShort();
-
+        
     }
 
     public Dimension getPreferredSize() {
@@ -157,32 +159,56 @@ class MyPanel extends JPanel implements ActionListener {
     public void paint(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        
         for(Points p: points) {
+            g2.setColor(p.col);
             g2.drawLine(p.i1, p.i2, p.j1, p.j2);
         }
-
+       
     }
 
     @Override
     public void actionPerformed(ActionEvent ae) {
         readData();
         Points p;
+        Color  c;
         for(Points p1: points) {
             p1.i1 = p1.i1 - 1;
             p1.j1 = p1.j1 - 1;
         }
+        
+        if (rms < threshold ) {
+            c = Color.red;
+        } else {
+            c = Color.black;
+        }
+        
         if ( points.isEmpty() ) {
-            p = new Points(800, 200, 800, 200 - (int) (d / scaler));
-            points.add(p);
+            p = new Points(800, 200, 800, 200 - (int) (d / scaler), c);
+            points.add(p); 
         }  else {
             int i2 = points.get(points.size() - 1).j2;
-            p = new Points(800, i2, 800, 200 - (int) (d / scaler));
+            p = new Points(800, i2, 800, 200 - (int) (d / scaler), c);
             points.add(p);
 
         }
-         if (points.size() > 801) {
-            points.remove(0);     
-         }
+        
+        if (points.size() > 801) {
+           points.remove(0);     
+        }
+         
+        
+        
+        if (count < 100) { 
+            count++;
+            sumOfSquares += Math.pow(Math.abs((int) (d / scaler)), 2);
+            rms = Math.sqrt(sumOfSquares / count);
+        } else {
+//            rms = Math.sqrt(sumOfSquares / count);
+            count = 0;
+            sumOfSquares = 0;
+        }
+
         repaint();
     }
 }
@@ -191,11 +217,12 @@ class Points {
     public int i2;
     public int j1;
     public int j2;
-    
-    Points(int i1, int i2, int j1, int j2) {
+    public Color col;
+    Points(int i1, int i2, int j1, int j2, Color c) {
         this.i1 = i1;
         this.i2 = i2;
         this.j1 = j1;
         this.j2 = j2;
+        this.col = c;
     }
 }
