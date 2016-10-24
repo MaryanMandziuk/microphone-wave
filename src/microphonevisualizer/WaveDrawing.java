@@ -15,8 +15,6 @@ import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,6 +100,7 @@ class MyPanel extends JPanel implements ActionListener {
     public static int count = 0;
     private short d;
     public double rms;
+    public double db;
     public TargetDataLine line;
     public int sumOfSquares;
     
@@ -172,12 +171,24 @@ class MyPanel extends JPanel implements ActionListener {
         readData();
         Points p;
         Color  c;
+        
+        if (count < 100) { 
+            count++;
+            sumOfSquares += Math.pow(Math.abs((int) (d / scaler)), 2);
+            rms = Math.sqrt(sumOfSquares / count);
+        } else {
+//            rms = Math.sqrt(sumOfSquares / count);
+            count = 0;
+            sumOfSquares = 0;
+        }
+               
         for(Points p1: points) {
             p1.i1 = p1.i1 - 1;
             p1.j1 = p1.j1 - 1;
         }
-        
+        dbCalculation();
         if (rms < threshold ) {
+//        if (Math.abs(db)  > 36) {
             c = Color.red;
         } else {
             c = Color.black;
@@ -197,19 +208,17 @@ class MyPanel extends JPanel implements ActionListener {
            points.remove(0);     
         }
          
-        
-        
-        if (count < 100) { 
-            count++;
-            sumOfSquares += Math.pow(Math.abs((int) (d / scaler)), 2);
-            rms = Math.sqrt(sumOfSquares / count);
-        } else {
-//            rms = Math.sqrt(sumOfSquares / count);
-            count = 0;
-            sumOfSquares = 0;
-        }
-
         repaint();
+    }
+    
+    private void dbCalculation() {
+        double amplitude;
+        if (d > 0) {
+            amplitude = d / (double) Short.MAX_VALUE;
+        } else {
+            amplitude = d / (double) Short.MIN_VALUE;
+        }
+        db = 20 * Math.log10((amplitude));
     }
 }
 class Points {
