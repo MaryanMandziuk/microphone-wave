@@ -96,6 +96,7 @@ public class WaveDrawing extends JFrame {
 }
 
 class MyPanel extends JPanel implements ActionListener {
+    
     public static final double threshold = 3.0;
     public static int count = 0;
     private short d;
@@ -104,16 +105,17 @@ class MyPanel extends JPanel implements ActionListener {
     public TargetDataLine line;
     public int sumOfSquares;
     
-    Timer timer;
+//    Timer timer;
     List <Points> points;
+    
     public double scaler = Short.MAX_VALUE / (double) 150;
     
     public MyPanel() {
         setBorder(BorderFactory.createLineBorder(Color.black));
-        timer = new Timer(0, this);
+//        timer = new Timer(0, this);
         points = new ArrayList<>();
-        
-        timer.start();
+//        
+//        timer.start();
         try {
 
             AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, true);
@@ -144,13 +146,79 @@ class MyPanel extends JPanel implements ActionListener {
     public void readData() {
 
         int numBytesRead = 16;
+
         byte[] data = new byte[numBytesRead];
+
         line.read(data, 0, numBytesRead);
         ByteBuffer bb = ByteBuffer.wrap(data);
         d = bb.getShort();
         
     }
+    
+    private short getShortData() {
+        int numBytesRead = 16;
+        byte[] data = new byte[numBytesRead];
 
+        line.read(data, 0, numBytesRead);
+        ByteBuffer bb = ByteBuffer.wrap(data);
+        return bb.getShort();
+    }
+    
+    public short[] getShortArray() {
+        float sRate = 8000.0f;
+        int seconds = 5;
+        int len = (int) (sRate * seconds);
+        short[] data = new short[len];
+        for(int i = 0; i < len; i++) {
+            data[i] = getShortData();
+            
+        }
+        System.out.println("close");
+        line.stop();
+        line.close();
+        return data;
+    }
+    
+    public short[] scaledData() {
+        int windowLenght = 800;
+        int seconds = 5;
+        float sRate = 8000.0f;
+        short[] data = getShortArray();
+        int pointsScaler = (int) (sRate / (windowLenght / seconds));
+        short[] scaledData = new short[windowLenght + 1];
+        int j = 0;
+        int sum = 0;
+
+        for(int i = 0; i < data.length; i++) {
+
+            sum += data[i];
+            if (i % pointsScaler == 0) {
+                scaledData[j] = (short) (sum / pointsScaler);
+                j++;
+                sum = 0;
+            }
+        }
+
+        return scaledData;
+    }
+    
+    public void pointsGenerate() {
+        short[] scaledData = scaledData();
+        
+        Points p;
+        for(int i = 0; i < 800; i++) {
+            if ( points.isEmpty() ) {
+                p = new Points(800, 200, 800, 200 - (int) (scaledData[i] / scaler), Color.black);
+                points.add(p); 
+            }  else {
+                int i2 = points.get(points.size() - 1).j2;
+                p = new Points(800, i2, 800, 200 - (int) (scaledData[i] / scaler), Color.black);
+        
+                points.add(p);
+            }
+        }
+        
+    }
     public Dimension getPreferredSize() {
         return new Dimension(800, 400);
     }
@@ -158,8 +226,11 @@ class MyPanel extends JPanel implements ActionListener {
     public void paint(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        pointsGenerate();
         
+
         for(Points p: points) {
+
             g2.setColor(p.col);
             g2.drawLine(p.i1, p.i2, p.j1, p.j2);
         }
@@ -168,7 +239,8 @@ class MyPanel extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent ae) {
-        readData();
+        System.out.println("1");
+/*        readData();
         Points p;
         Color  c;
         
@@ -207,7 +279,9 @@ class MyPanel extends JPanel implements ActionListener {
         if (points.size() > 801) {
            points.remove(0);     
         }
-         
+         */
+
+
         repaint();
     }
     
@@ -221,6 +295,8 @@ class MyPanel extends JPanel implements ActionListener {
         db = 20 * Math.log10((amplitude));
     }
 }
+
+
 class Points {
     public int i1;
     public int i2;
