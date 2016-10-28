@@ -34,7 +34,7 @@ import javax.swing.Timer;
  * @author maryan
  */
 public class WaveDrawing extends JFrame {
-    
+
     /**
      * Creates new form WaveDrawing
      */
@@ -96,8 +96,8 @@ public class WaveDrawing extends JFrame {
 }
 
 class MyPanel extends JPanel implements ActionListener {
-    
-    private static final double THRESHOLD = 3.0;
+
+    private static final double THRESHOLD = 1000.0;
     private static final float SAMPLERATE = 8000.0f;
     private static final double SCALER = Short.MAX_VALUE / (double) 150;
     private static final int SECONDS = 5;
@@ -107,12 +107,10 @@ class MyPanel extends JPanel implements ActionListener {
     public double db;
     public TargetDataLine line;
     public int sumOfSquares;
-    
+
 //    Timer timer;
-    List <Points> points;
-    
-    
-    
+    List<Points> points;
+
     public MyPanel() {
         setBorder(BorderFactory.createLineBorder(Color.black));
 //        timer = new Timer(0, this);
@@ -143,8 +141,7 @@ class MyPanel extends JPanel implements ActionListener {
             System.out.println("error");
         }
     }
-    
-    
+
     public void readData() {
         int numBytesRead = 16;
         byte[] data = new byte[numBytesRead];
@@ -152,7 +149,7 @@ class MyPanel extends JPanel implements ActionListener {
         ByteBuffer bb = ByteBuffer.wrap(data);
         d = bb.getShort();
     }
-    
+
     private short getShortData() {
         int numBytesRead = 16;
         byte[] data = new byte[numBytesRead];
@@ -161,11 +158,11 @@ class MyPanel extends JPanel implements ActionListener {
         ByteBuffer bb = ByteBuffer.wrap(data);
         return bb.getShort();
     }
-    
+
     private short[] getShortArray() {
         int len = (int) (SAMPLERATE * SECONDS);
         short[] data = new short[len];
-        for(int i = 0; i < len; i++) {
+        for (int i = 0; i < len; i++) {
             data[i] = getShortData();
         }
         System.out.println("close");
@@ -173,7 +170,7 @@ class MyPanel extends JPanel implements ActionListener {
         line.close();
         return data;
     }
-    
+
     public short[] scaledData() {
         int windowLenght = 800;
         short[] data = getShortArray();
@@ -186,27 +183,27 @@ class MyPanel extends JPanel implements ActionListener {
         int count2 = 0;
         int c1 = 0;
         int c2 = 0;
-        for(int i = 0; i < data.length; i++) {
+        for (int i = 0; i < data.length; i++) {
             // average value in chunk
-            if (data[i] > 0) {
-                sum += data[i];
-                count1++;
-            } else {
-                negSum += data[i];
-                count2++;
-            }
-            if (count1 == pointsScaler) {
-                scaledData[j] = (short) (sum / count1);
-                sum = 0;
-                count1 =0;
-                j++;
-            }
-            if (count2 == pointsScaler) {
-                scaledData[j] = (short) (negSum / count2);
-                negSum = 0;
-                count2 = 0;
-                j++;
-            }
+//            if (data[i] > 0) {
+//                sum += data[i];
+//                count1++;
+//            } else {
+//                negSum += data[i];
+//                count2++;
+//            }
+//            if (count1 == pointsScaler) {
+//                scaledData[j] = (short) (sum / count1);
+//                sum = 0;
+//                count1 =0;
+//                j++;
+//            }
+//            if (count2 == pointsScaler) {
+//                scaledData[j] = (short) (negSum / count2);
+//                negSum = 0;
+//                count2 = 0;
+//                j++;
+//            }
             // last(random) value in chunk
 //            if (data[i] > 0) {
 //                c1++;
@@ -223,53 +220,95 @@ class MyPanel extends JPanel implements ActionListener {
 //                c2 = 0;
 //                j++;
 //            }
-            
+
             //highest value in chunk
-//            if (data[i] > 0) {
-//                if(data[i] > sum){
-//                    sum = data[i];
-//                }
-//                c1++;    
-//            } else {
-//                if(data[i] < negSum) {
-//                    negSum = data[i];
-//                }
-//                c2++;
-//            }            
-//            if (c1  == pointsScaler) {
-//                scaledData[j] = (short)sum;
-//                j++;
-//                sum = 0;
-//                count1 = 0;
-//                c1 = 0;
-//            } 
-//            if (c2 == pointsScaler ) {
-//                scaledData[j] = (short)(negSum);
-//                j++;
-//                negSum = 0;
-//                count2 = 0;
-//                c2 = 0;
-//            }
+            if (data[i] > 0) {
+                if (data[i] > sum) {
+                    sum = data[i];
+                }
+                c1++;
+            } else {
+                if (data[i] < negSum) {
+                    negSum = data[i];
+                }
+                c2++;
+            }
+            if (c1 == pointsScaler) {
+                scaledData[j] = (short) sum;
+                j++;
+                sum = 0;
+                count1 = 0;
+                c1 = 0;
+            }
+            if (c2 == pointsScaler) {
+                scaledData[j] = (short) (negSum);
+                j++;
+                negSum = 0;
+                count2 = 0;
+                c2 = 0;
+            }
         }
         return scaledData;
     }
-    
+
+    public short[] envelopeConvert(short[] arr) {
+        short[] data = new short[arr.length];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (short) Math.abs(arr[i]);
+//                    System.out.println(data[i]);
+        }
+        return data;
+    }
+
+    public void filter(short[] data) {
+        int N = 2;
+        for (int i = 0; i < data.length; i++) {
+            data[i] = getAverage(data, i, N);
+
+        }
+    }
+
+    public short getAverage(short[] data, int index, int N) {
+        int sum = 0;
+        int start = index - N;
+        int end = index + N;
+        if (start < 0) {
+            start = 0;
+        }
+        if (end > data.length) {
+            end = data.length;
+        }
+        for (int i = start; i < end; i++) {
+            sum += data[i];
+
+        }
+        return (short) (sum / (N * 2 + 1));
+    }
+
     public void pointsGenerate() {
         short[] scaledData = scaledData();
-        
+        short[] thresholdData = envelopeConvert(scaledData);
+        filter(thresholdData);
         Points p;
-        for(int i = 0; i < 800; i++) {
-            if ( points.isEmpty() ) {
-                p = new Points(800, 200, 800, 200 - (int) (scaledData[i] / SCALER), Color.black);
-                points.add(p); 
-            }  else {
-                int i2 = points.get(points.size() - 1).j2;  
-                p = new Points(800 - i, i2, 800 - i, 200 - (int) (scaledData[i] / SCALER), Color.black);
+        Color col;
+        for (int i = 0; i < 800; i++) {
+            if (thresholdData[i] < THRESHOLD) {
+                col = Color.RED;
+            } else {
+                col = Color.BLACK;
+            }
+            if (points.isEmpty()) {
+                p = new Points(800, 200, 800, 200 - (int) (scaledData[i] / SCALER), col);
+                points.add(p);
+            } else {
+                int i2 = points.get(points.size() - 1).j2;
+                p = new Points(800 - i, i2, 800 - i, 200 - (int) (scaledData[i] / SCALER), col);
                 points.add(p);
             }
         }
-        
+
     }
+
     public Dimension getPreferredSize() {
         return new Dimension(800, 400);
     }
@@ -278,19 +317,18 @@ class MyPanel extends JPanel implements ActionListener {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         pointsGenerate();
-        
 
-        for(Points p: points) {
+        for (Points p : points) {
 
             g2.setColor(p.col);
             g2.drawLine(p.i1, p.i2, p.j1, p.j2);
         }
-       
+
     }
 
     @Override
     public void actionPerformed(ActionEvent ae) {
-/*        readData();
+        /*        readData();
         Points p;
         Color  c;
         
@@ -331,10 +369,9 @@ class MyPanel extends JPanel implements ActionListener {
         }
          */
 
-
         repaint();
     }
-    
+
     private void dbCalculation() {
         double amplitude;
         if (d > 0) {
@@ -346,13 +383,14 @@ class MyPanel extends JPanel implements ActionListener {
     }
 }
 
-
 class Points {
+
     public int i1;
     public int i2;
     public int j1;
     public int j2;
     public Color col;
+
     Points(int i1, int i2, int j1, int j2, Color c) {
         this.i1 = i1;
         this.i2 = i2;
