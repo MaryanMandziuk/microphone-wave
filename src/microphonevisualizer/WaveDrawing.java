@@ -372,7 +372,6 @@ class MyPanel extends JPanel implements ActionListener {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         pointsGenerate();
-        System.out.println("2");
         for (Points p : points) {
             g2.setColor(p.col);
             g2.drawLine(p.i1, p.i2, p.j1, p.j2);
