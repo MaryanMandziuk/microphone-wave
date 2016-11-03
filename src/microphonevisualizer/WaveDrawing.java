@@ -14,25 +14,20 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
+
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.sound.sampled.AudioFileFormat;
+
 
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 import javax.swing.Timer;
+import static microphonevisualizer.Util.writeWAV;
 
 /**
  *
@@ -89,12 +84,10 @@ public class WaveDrawing extends JFrame {
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         MyPanel obj = new MyPanel();
         f.add(obj);
-
         f.pack();
         f.setVisible(true);
-
+        obj.activateLine();
     }
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
@@ -105,13 +98,14 @@ class MyPanel extends JPanel implements ActionListener {
     private static final double THRESHOLD = 1000.0;
     private static final float SAMPLERATE = 8000.0f;
     private static final double SCALER = Short.MAX_VALUE / (double) 150;
-    private static final int SECONDS = 1;
+    private static final int SECONDS = 5;
     public static int count = 0;
     private short d;
     public double rms;
     public double db;
     public TargetDataLine line;
     public int sumOfSquares;
+    public AudioFormat format;
 
 //    Timer timer;
     List<Points> points;
@@ -124,12 +118,15 @@ class MyPanel extends JPanel implements ActionListener {
 //        timer = new Timer(0, this);
         points = new ArrayList<>();
 //        
-//        timer.start();
+//        timer.start();   
+    }
+    
+    public void activateLine() {
         try {
 
-            AudioFormat format = new AudioFormat(SAMPLERATE, 16, 1, true, true);
+            format = new AudioFormat(SAMPLERATE, 16, 1, true, true);
             line = AudioSystem.getTargetDataLine(format);
-
+            
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
             if (!AudioSystem.isLineSupported(info)) {
                 System.out.println("Line doesn't supported. ");
@@ -139,12 +136,11 @@ class MyPanel extends JPanel implements ActionListener {
             line.open(format);
             line.start();
             
-
         } catch (LineUnavailableException ex) {
             System.out.println("Line unavailable " + ex);
         }
     }
-
+    
     /**
      * Reading sample
      */
@@ -162,9 +158,9 @@ class MyPanel extends JPanel implements ActionListener {
      * @return 16 bytes sample
      */
     private short getSample() {
-        int numBytesRead = 16;
-        byte[] data = new byte[numBytesRead];
-        line.read(data, 0, numBytesRead);
+        int numByteRead = 2;
+        byte[] data = new byte[numByteRead];
+        line.read(data, 0, numByteRead);
         ByteBuffer bb = ByteBuffer.wrap(data);
         return bb.getShort();
     }
@@ -174,13 +170,13 @@ class MyPanel extends JPanel implements ActionListener {
      *
      * @return short array of samples
      */
-    private short[] getShortArray() {
+    private short[] getShortArray() {        
         int len = (int) (SAMPLERATE * SECONDS);
         short[] data = new short[len];
         for (int i = 0; i < len; i++) {
             data[i] = getSample();
         }
-        writeWAV(data);
+        writeWAV(data, "record", format);
         System.out.println("close");
         line.stop();
         line.close();
@@ -449,44 +445,5 @@ class MyPanel extends JPanel implements ActionListener {
             amplitude = d / (double) Short.MIN_VALUE;
         }
         db = 20 * Math.log10((amplitude));
-    }
-    
-    public void writeWAV(short[] data) {
-        ByteBuffer buffer = ByteBuffer.allocate(data.length * 2);
-        buffer.order(ByteOrder.BIG_ENDIAN);
-        buffer.asShortBuffer().put(data);
-        byte[] bytes = buffer.array();
-        
-        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-        AudioInputStream audioInputStream = new AudioInputStream(bais,new AudioFormat(SAMPLERATE, 16, 1, true, true),bytes.length);
-        File fileOut = new File("test.wav");
-        if (AudioSystem.isFileTypeSupported(AudioFileFormat.Type.WAVE, 
-            audioInputStream)) {
-            try {
-                AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, fileOut);
-            } catch (IOException ex) {
-                System.out.println("Error: " + ex);
-            }
-        }
-    }
-}
-
-/**
- * class for representing wave's points
- */
-class Points {
-
-    public int i1;
-    public int i2;
-    public int j1;
-    public int j2;
-    public Color col;
-
-    Points(int i1, int i2, int j1, int j2, Color c) {
-        this.i1 = i1;
-        this.i2 = i2;
-        this.j1 = j1;
-        this.j2 = j2;
-        this.col = c;
     }
 }
